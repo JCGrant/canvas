@@ -7,6 +7,10 @@ const canvasStyle = {
 interface IPaintCanvasState {
   brushColor: string;
   brushSize: number;
+  lastPoint: {
+    x: number;
+    y: number;
+  };
   mouseDown: boolean;
 }
 
@@ -19,6 +23,7 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
     this.state = {
       brushColor: '#000000',
       brushSize: 10,
+      lastPoint: { x: 0, y: 0 },
       mouseDown: false,
     };
   }
@@ -67,12 +72,17 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
   };
 
   private onMouseMove = (e: React.MouseEvent) => {
+    const currentPoint = {
+      x: e.pageX - this.canvas.offsetLeft,
+      y: e.pageY - this.canvas.offsetTop,
+    };
+    this.setState({ lastPoint: currentPoint });
     if (!this.state.mouseDown) {
       return;
     }
     this.paint(
-      e.pageX - this.canvas.offsetLeft,
-      e.pageY - this.canvas.offsetTop,
+      this.state.lastPoint,
+      currentPoint,
       this.state.brushSize,
       this.state.brushColor
     );
@@ -108,15 +118,19 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
   };
 
   private paint = (
-    x: number,
-    y: number,
+    last: { x: number; y: number },
+    current: { x: number; y: number },
     brushSize: number = 1,
     color: string = 'black'
   ) => {
-    this.ctx.fillStyle = color;
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = brushSize;
+    this.ctx.lineJoin = 'round';
     this.ctx.beginPath();
-    this.ctx.arc(x, y, brushSize, 0, Math.PI * 2, true);
-    this.ctx.fill();
+    this.ctx.moveTo(last.x, last.y);
+    this.ctx.lineTo(current.x, current.y);
+    this.ctx.closePath();
+    this.ctx.stroke();
   };
 }
 
