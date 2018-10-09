@@ -19,7 +19,6 @@ interface IPaintCanvasState {
     y: number;
   };
   mouseDown: boolean;
-  serverIP: string;
 }
 
 const stateKey = 'paint-state';
@@ -29,7 +28,6 @@ const defaultState: IPaintCanvasState = {
   brushSize: 10,
   lastPoint: { x: 0, y: 0 },
   mouseDown: false,
-  serverIP: '192.168.1.123',
 };
 
 class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
@@ -66,7 +64,6 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
             onChange={this.onChangeBrushSize}
           />
           <button onClick={this.onClickSave}>Save</button>
-          <input value={this.state.serverIP} onChange={this.onChangeServerIP} />
         </div>
         <canvas
           ref={this.canvasRef}
@@ -155,16 +152,12 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
     link.click();
   };
 
-  private onChangeServerIP = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const serverIP = e.target.value;
-    this.setState({ serverIP }, () => {
-      this.socket.close();
-      this.socket = this.setupWebsocket();
-    });
-  };
-
   private setupWebsocket = (): WebSocket => {
-    const socket = new WebSocket(`ws://${this.state.serverIP}:8080/ws`);
+    const webSocketProtocol =
+      window.location.protocol === 'http:' ? 'ws:' : 'wss:';
+    const socket = new WebSocket(
+      `${webSocketProtocol}//${window.location.host}/ws`
+    );
     // tslint:disable-next-line no-console
     socket.onopen = () => console.log('connected');
     socket.onmessage = this.onMessage;

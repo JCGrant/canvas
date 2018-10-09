@@ -1,16 +1,18 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
+	_ "github.com/JCGrant/paint/statik"
 	"github.com/gorilla/websocket"
+	"github.com/rakyll/statik/fs"
 )
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
 type Server struct {
@@ -39,12 +41,18 @@ func (s *Server) handleNewConnection(w http.ResponseWriter, r *http.Request) {
 	go client.writePump()
 }
 
-func (s *Server) Serve() {
-	go s.hub.run()
+func (s *Server) Serve() error {
+	statikFS, err := fs.New()
+	if err != nil {
+		return fmt.Errorf("setting up statikFS failed: %s", err)
+	}
+	http.HandleFunc("/", http.FileServer(statikFS).ServeHTTP)
 	http.HandleFunc("/ws", s.handleNewConnection)
+	go s.hub.run()
 	log.Printf("serving at http://127.0.0.1%s\n", s.address)
-	err := http.ListenAndServe(s.address, nil)
+	err = http.ListenAndServe(s.address, nil)
 	if err != nil {
 		log.Fatal("serving failed: ", err)
 	}
+	return nil
 }
