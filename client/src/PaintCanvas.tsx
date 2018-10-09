@@ -19,6 +19,7 @@ interface IPaintCanvasState {
     y: number;
   };
   mouseDown: boolean;
+  serverIP: string;
 }
 
 class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
@@ -34,11 +35,9 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
       brushSize: 10,
       lastPoint: { x: 0, y: 0 },
       mouseDown: false,
+      serverIP: '192.168.1.123',
     };
-    this.socket = new WebSocket('ws://127.0.0.1:8080/ws');
-    // tslint:disable-next-line no-console
-    this.socket.onopen = () => console.log('connected');
-    this.socket.onmessage = this.onMessage;
+    this.socket = this.setupWebsocket();
   }
 
   public render() {
@@ -58,6 +57,7 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
             onChange={this.onChangeBrushSize}
           />
           <button onClick={this.onClickSave}>Save</button>
+          <input value={this.state.serverIP} onChange={this.onChangeServerIP} />
         </div>
         <canvas
           ref={this.canvasRef}
@@ -105,7 +105,12 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
       current: currentPoint,
       last: this.state.lastPoint,
     };
-    this.socket.send(JSON.stringify(data));
+    try {
+      this.socket.send(JSON.stringify(data));
+    } catch (e) {
+      // tslint:disable-next-line no-console
+      console.error(e);
+    }
   };
 
   private onMouseDown = (e: React.MouseEvent) => {
@@ -135,6 +140,22 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
     link.setAttribute('download', 'painting.png');
     link.setAttribute('href', image);
     link.click();
+  };
+
+  private onChangeServerIP = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const serverIP = e.target.value;
+    this.setState({ serverIP }, () => {
+      this.socket.close();
+      this.socket = this.setupWebsocket();
+    });
+  };
+
+  private setupWebsocket = (): WebSocket => {
+    const socket = new WebSocket(`ws://${this.state.serverIP}:8080/ws`);
+    // tslint:disable-next-line no-console
+    socket.onopen = () => console.log('connected');
+    socket.onmessage = this.onMessage;
+    return socket;
   };
 
   private onMessage = (e: { data: string }) => {
