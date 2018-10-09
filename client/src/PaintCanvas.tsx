@@ -22,6 +22,16 @@ interface IPaintCanvasState {
   serverIP: string;
 }
 
+const stateKey = 'paint-state';
+
+const defaultState: IPaintCanvasState = {
+  brushColor: '#000000',
+  brushSize: 10,
+  lastPoint: { x: 0, y: 0 },
+  mouseDown: false,
+  serverIP: '192.168.1.123',
+};
+
 class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -30,12 +40,11 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
 
   constructor(props: {}) {
     super(props);
+    const storedStateStr = localStorage.getItem(stateKey);
+    const storedState = storedStateStr ? JSON.parse(storedStateStr) : {};
     this.state = {
-      brushColor: '#000000',
-      brushSize: 10,
-      lastPoint: { x: 0, y: 0 },
-      mouseDown: false,
-      serverIP: '192.168.1.123',
+      ...defaultState,
+      ...storedState,
     };
     this.socket = this.setupWebsocket();
   }
@@ -73,6 +82,10 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
 
   public componentDidMount() {
     window.addEventListener('mouseup', this.onMouseUp);
+  }
+
+  public componentDidUpdate() {
+    localStorage.setItem(stateKey, JSON.stringify(this.state));
   }
 
   public componentWillUnmount() {
