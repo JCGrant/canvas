@@ -4,6 +4,13 @@ const canvasStyle = {
   border: '1px solid black',
 };
 
+interface IPaintMessage {
+  last: { x: number; y: number };
+  current: { x: number; y: number };
+  brushSize: number;
+  brushColor: string;
+}
+
 interface IPaintCanvasState {
   brushColor: string;
   brushSize: number;
@@ -18,6 +25,8 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
 
+  private socket: WebSocket;
+
   constructor(props: {}) {
     super(props);
     this.state = {
@@ -26,6 +35,10 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
       lastPoint: { x: 0, y: 0 },
       mouseDown: false,
     };
+    this.socket = new WebSocket('ws://127.0.0.1:8080/ws');
+    // tslint:disable-next-line no-console
+    this.socket.onopen = () => console.log('connected');
+    this.socket.onmessage = this.onMessage;
   }
 
   public render() {
@@ -86,6 +99,13 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
       this.state.brushSize,
       this.state.brushColor
     );
+    const data: IPaintMessage = {
+      brushColor: this.state.brushColor,
+      brushSize: this.state.brushSize,
+      current: currentPoint,
+      last: this.state.lastPoint,
+    };
+    this.socket.send(JSON.stringify(data));
   };
 
   private onMouseDown = (e: React.MouseEvent) => {
@@ -115,6 +135,11 @@ class PaintCanvas extends React.Component<{}, IPaintCanvasState> {
     link.setAttribute('download', 'painting.png');
     link.setAttribute('href', image);
     link.click();
+  };
+
+  private onMessage = (e: { data: string }) => {
+    const data: IPaintMessage = JSON.parse(e.data);
+    this.paint(data.last, data.current, data.brushSize, data.brushColor);
   };
 
   private paint = (
